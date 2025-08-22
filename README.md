@@ -1,15 +1,118 @@
 # HAND-GESTURE-BASED-APPROACH-TO-CONTROL-POWER-POINT-PRESENTATION
-Traditional methods of controlling PowerPoint presentations, like using a mouse or 
-keyboard, can be limiting and require physical interaction with the device. There is a need for a 
-more intuitive and hands-free way to control presentations. 
-The problem is to develop a system that allows users to control PowerPoint slides using hand 
-gestures. This system should detect hand movements accurately in real-time, even with changes 
-in hand position, lighting, and background, to make the presentation process smoother and more 
-engaging without needing to touch the screen or use a mouse. 
+import cv2 
+import os 
+from cvzone.HandTrackingModule import HandDetector 
+import numpy as np 
+from matplotlib.pyplot import annotate 
+#Variables 
+width, height = 1280, 720 
+folderPath = "ppt" 
+#Camera Setup 
+cap = cv2.VideoCapture(0) 
+cap.set(3, width) 
+cap.set(4, height) 
+#Get the list of presentation images 
+pathImages = sorted(os.listdir(folderPath), key=len) 
+print(pathImages) 
+#variables 
+imgNumber = 0 
+hs, ws = int(120*1), int(213*1) 
+gestureThreshold = 350 
+buttonPressed = False 
+buttonCounter = 0 
+buttonDelay = 30 
+annotations = [[]] 
+annotationNumber = -1 
+annotationStart = False 
+# Hand Dectector 
+detector = HandDetector(detectionCon=0.8, maxHands=1) 
+while True: 
+#import images 
+success, img = cap.read() 
+img = cv2.flip(img, 1) 
+pathFullImage = os.path.join(folderPath,pathImages[imgNumber]) 
+imgCurrent = cv2.imread(pathFullImage) 
+hands, img=detector.findHands(img) 
+cv2.line(img,(0, gestureThreshold),(width,gestureThreshold),(0,255,0), 10) 
+if hands and buttonPressed is False: 
+hand = hands[0] 
+fingers = detector.fingersUp(hand) 
+cx, cy = hand['center'] 
+2024-25 
+   
+ lmList = hand['lmList'] 
+ 
+        # constrain values for easier drawing 
+        indexFinger = lmList[8][0], lmList[8][1] 
+        xVal = int(np.interp(lmList[8][0], [width//2,w],[ 0,width])) 
+        yVal = int(np.interp(lmList[8][1], [150,height-150], [0, width])) 
+        indexFinger = xVal,yVal 
+ 
+ 
+        if cy  <= gestureThreshold:# if hand is at the height of the face 
+            annotationStart = False 
+            # Gesture 1 - Left 
+            if fingers == [1,0,0,0,0]: 
+                annotationStart = False 
+                print("Left") 
+                if imgNumber>0: 
+                    buttonPressed = True 
+                    annotations = [[]] 
+                    annotationNumber = 0 
+                    imgNumber -= 1 
+ 
+            # Gesture 2 - Right 
+            if fingers == [0, 0, 0, 0, 1]: 
+                annotationStart = False 
+                print("Right") 
+                if imgNumber < len(pathImages)-1: 
+                    buttonPressed = True 
+                    annotations = [[]] 
+                    annotationNumber = 0 
+                    imgNumber += 1 
+ 
+        # Gesture 3 - Show Pointer 
+        if fingers == [0,1,1,0,0]: 
+            cv2.circle(imgCurrent, indexFinger, 12, (0, 0, 255), cv2.FILLED) 
+            annotationStart = False 
+ 
+        # Gesture 4 - Draw Pointer 
+        if fingers == [0,1,0,0,0]: 
+            if annotationStart is False: 
+                annotationStart = True 
+                annotationNumber +=1 
+                annotations.append([]) 
+            cv2.circle(imgCurrent, indexFinger,12,(0, 0, 255), cv2.FILLED) 
+            annotations[annotationNumber].append(indexFinger) 
+        else: 
+            annotationStart = False 
+ 
+        # Gesture 5 - Erase 
+        if fingers == [0,1,1,1,0]: 
+            if annotations: 
+                if annotationNumber >= 0: 
 
-Aim: 
-The primary aim of a hand gesture-based approach for controlling a PowerPoint presentation is to 
-provide a more intuitive, interactive, and hands-free way of navigating through slides. This method 
-leverages artificial intelligence technology to recognize specific hand movements, enabling the 
-presenter to control the presentation seamlessly without the need for a keyboard, mouse, or remote 
-control.
+annotations.pop(-1) 
+annotationNumber -=1 
+buttonPressed = True 
+else: 
+annotationStart=False 
+# Button Pressed ittretions 
+if buttonPressed: 
+buttonCounter +=1 
+if buttonCounter > buttonDelay: 
+buttonCounter = 0 
+buttonPressed = False 
+for i in range (len(annotations)): 
+for j in range(len(annotations[i])): 
+if j!=0: 
+cv2.line(imgCurrent, annotations[i][j-1], annotations[i][j], (0,0,200),12) 
+#Adding webcam images on slides 
+imgSmall = cv2.resize(img, (ws, hs)) 
+h,w,_ = imgCurrent.shape 
+imgCurrent[0:hs,w-ws:w] = imgSmall 
+cv2.imshow("image",img) 
+cv2.imshow("Slides",imgCurrent) 
+key = cv2.waitKey(1) 
+if key == ord('q'): 
+break
